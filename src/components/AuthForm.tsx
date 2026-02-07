@@ -5,6 +5,7 @@ import styled from 'styled-components'
 
 import { logIn, signUp } from '../store/slices/auth'
 import type { RootState, AppDispatch } from '../store/store'
+import restAPI from '../util/rest'
 import {
   PrimaryButton,
   SecondaryButton,
@@ -59,8 +60,86 @@ const StyledSecondaryButton = styled(SecondaryButton)`
   padding: 0.875rem 1rem;
 `
 
+interface ForgotPasswordFormProps {
+  onCancel?: () => void
+  cancelButtonText?: string
+}
+
+function ForgotPasswordForm({
+  onCancel,
+  cancelButtonText = 'Cancel',
+}: ForgotPasswordFormProps) {
+  const [email, setEmail] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!email.trim()) {
+      setFormError('Enter your email address.')
+      return
+    }
+
+    setFormError(null)
+    setResetError(null)
+    setResetLoading(true)
+
+    try {
+      await restAPI.put('/auth/request-new-password', { email: email.trim() })
+      setResetSuccess(true)
+    } catch (error: any) {
+      setResetError(error.response?.data?.message || error.message || 'Password reset request failed')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      {resetSuccess ? (
+        <StyledErrorText style={{ background: '#d4edda', color: '#155724', borderLeft: '4px solid #28a745' }}>
+          Check your email for password reset instructions.
+        </StyledErrorText>
+      ) : (
+        <>
+          <FormSection>
+            <FormLabel htmlFor='auth-email'>Email</FormLabel>
+            <TextInput
+              id='auth-email'
+              type='email'
+              placeholder='john@example.com'
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete='email'
+            />
+          </FormSection>
+          {(formError || resetError) && (
+            <StyledErrorText>{formError || resetError}</StyledErrorText>
+          )}
+          <ButtonContainer>
+            {onCancel && (
+              <StyledSecondaryButton type='button' onClick={onCancel}>
+                {cancelButtonText}
+              </StyledSecondaryButton>
+            )}
+            <StyledPrimaryButton
+              type='submit'
+              disabled={resetLoading}
+              style={onCancel ? {} : { flex: 1 }}
+            >
+              {resetLoading ? 'Sending…' : 'Send Reset Link'}
+            </StyledPrimaryButton>
+          </ButtonContainer>
+        </>
+      )}
+    </Form>
+  )
+}
+
 interface AuthFormProps {
-  mode: 'login' | 'signup'
+  mode: 'login' | 'signup' | 'forgot-password'
   onCancel?: () => void
   cancelButtonText?: string
 }
@@ -79,45 +158,52 @@ export default function AuthForm({
   const [email, setEmail] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
-  const handleLogIn = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!username.trim() || !password.trim()) {
-      setFormError('Enter your username and password.')
-      return
-    }
-
-    setFormError(null)
-    dispatch(logIn({ username: username.trim(), password: password.trim() }))
-  }
-
-  const handleSignUp = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!displayName.trim()) {
-      setFormError('Enter your display name.')
-      return
-    }
-    if (!username.trim()) {
-      setFormError('Enter a username.')
-      return
-    }
-    if (!password.trim()) {
-      setFormError('Enter a password.')
-      return
-    }
-
-    setFormError(null)
-    dispatch(
-      signUp({
-        displayName: displayName.trim(),
-        username: username.trim(),
-        email: email.trim() || null,
-        password: password.trim(),
-      })
+  if (mode === 'forgot-password') {
+    return (
+      <ForgotPasswordForm
+        onCancel={onCancel}
+        cancelButtonText={cancelButtonText}
+      />
     )
   }
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (mode === 'login') {
+      if (!username.trim() || !password.trim()) {
+        setFormError('Enter your username and password.')
+        return
+      }
+      setFormError(null)
+      dispatch(logIn({ username: username.trim(), password: password.trim() }))
+    } else {
+      if (!displayName.trim()) {
+        setFormError('Enter your display name.')
+        return
+      }
+      if (!username.trim()) {
+        setFormError('Enter a username.')
+        return
+      }
+      if (!password.trim()) {
+        setFormError('Enter a password.')
+        return
+      }
+      setFormError(null)
+      dispatch(
+        signUp({
+          displayName: displayName.trim(),
+          username: username.trim(),
+          email: email.trim() || null,
+          password: password.trim(),
+        })
+      )
+    }
+  }
+
   return (
-    <Form onSubmit={mode === 'login' ? handleLogIn : handleSignUp}>
+    <Form onSubmit={handleSubmit}>
       {mode === 'signup' && (
         <>
           <FormSection>
