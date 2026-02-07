@@ -90,7 +90,11 @@ function ForgotPasswordForm({
       await restAPI.put('/auth/request-new-password', { email: email.trim() })
       setResetSuccess(true)
     } catch (error: any) {
-      setResetError(error.response?.data?.message || error.message || 'Password reset request failed')
+      setResetError(
+        error.response?.data?.message ||
+          error.message ||
+          'Password reset request failed',
+      )
     } finally {
       setResetLoading(false)
     }
@@ -99,7 +103,13 @@ function ForgotPasswordForm({
   return (
     <Form onSubmit={handleSubmit}>
       {resetSuccess ? (
-        <StyledErrorText style={{ background: '#d4edda', color: '#155724', borderLeft: '4px solid #28a745' }}>
+        <StyledErrorText
+          style={{
+            background: '#d4edda',
+            color: '#155724',
+            borderLeft: '4px solid #28a745',
+          }}
+        >
           Check your email for password reset instructions.
         </StyledErrorText>
       ) : (
@@ -138,16 +148,114 @@ function ForgotPasswordForm({
   )
 }
 
+interface ResetPasswordFormProps {
+  resetToken: string
+}
+
+function ResetPasswordForm({ resetToken }: ResetPasswordFormProps) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!password.trim()) {
+      setFormError('Enter a new password.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setFormError('Passwords do not match.')
+      return
+    }
+
+    setFormError(null)
+    setLoading(true)
+
+    try {
+      await restAPI.put('/auth/reset-password', {
+        resetPasswordToken: resetToken,
+        newPassword: password,
+      })
+      setSuccess(true)
+    } catch (error: any) {
+      setFormError(
+        error.response?.data?.message ||
+          error.message ||
+          'Password reset failed. The link may have expired.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      {success ? (
+        <StyledErrorText
+          style={{
+            background: '#d4edda',
+            color: '#155724',
+            borderLeft: '4px solid #28a745',
+          }}
+        >
+          Your password has been reset successfully. You can now log in.
+        </StyledErrorText>
+      ) : (
+        <>
+          <FormSection>
+            <FormLabel htmlFor='reset-password'>New Password</FormLabel>
+            <TextInput
+              id='reset-password'
+              type='password'
+              placeholder='Enter new password'
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete='new-password'
+            />
+          </FormSection>
+          <FormSection>
+            <FormLabel htmlFor='reset-confirm-password'>
+              Confirm Password
+            </FormLabel>
+            <TextInput
+              id='reset-confirm-password'
+              type='password'
+              placeholder='Confirm new password'
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete='new-password'
+            />
+          </FormSection>
+          {formError && <StyledErrorText>{formError}</StyledErrorText>}
+          <ButtonContainer>
+            <StyledPrimaryButton
+              type='submit'
+              disabled={loading}
+              style={{ flex: 1 }}
+            >
+              {loading ? 'Resetting…' : 'Reset Password'}
+            </StyledPrimaryButton>
+          </ButtonContainer>
+        </>
+      )}
+    </Form>
+  )
+}
+
 interface AuthFormProps {
-  mode: 'login' | 'signup' | 'forgot-password'
+  mode: 'login' | 'signup' | 'forgot-password' | 'reset-password'
   onCancel?: () => void
   cancelButtonText?: string
+  resetToken?: string
 }
 
 export default function AuthForm({
   mode,
   onCancel,
   cancelButtonText = 'Cancel',
+  resetToken,
 }: AuthFormProps) {
   const dispatch = useDispatch<AppDispatch>()
   const authState = useSelector((state: RootState) => state.auth)
@@ -165,6 +273,10 @@ export default function AuthForm({
         cancelButtonText={cancelButtonText}
       />
     )
+  }
+
+  if (mode === 'reset-password') {
+    return <ResetPasswordForm resetToken={resetToken!} />
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -197,7 +309,7 @@ export default function AuthForm({
           username: username.trim(),
           email: email.trim() || null,
           password: password.trim(),
-        })
+        }),
       )
     }
   }
@@ -275,8 +387,8 @@ export default function AuthForm({
               ? 'Signing in…'
               : 'Creating account…'
             : mode === 'login'
-            ? 'Log In'
-            : 'Sign Up'}
+              ? 'Log In'
+              : 'Sign Up'}
         </StyledPrimaryButton>
       </ButtonContainer>
     </Form>

@@ -9,6 +9,7 @@ import ConversationView from './pages/Conversation'
 import NewConversation from './pages/NewConversation'
 import Landing from './pages/Landing'
 import About from './pages/About'
+import ResetPassword from './pages/ResetPassword'
 
 const router = createBrowserRouter([
   {
@@ -16,12 +17,16 @@ const router = createBrowserRouter([
     element: <NewConversation />,
   },
   {
-    path: '/auth',
+    path: '/login',
     element: <Landing />,
   },
   {
     path: '/about',
     element: <About />,
+  },
+  {
+    path: '/reset-password/:token',
+    element: <ResetPassword />,
   },
   {
     path: '/:convoId',
