@@ -72,29 +72,53 @@ const ShareChatContainer = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
   width: 100%;
-  padding: 2rem 1rem;
+  min-height: calc(100dvh - 10rem);
+  padding: 1rem 2rem;
+
+  @media (min-width: 30rem) {
+    min-height: 70vh;
+    padding: 2rem;
+  }
 `
 
 const ShareChatCard = styled(Card)`
   max-width: 32rem;
   width: 100%;
   text-align: center;
+  padding: 1.25rem 1rem;
+
+  @media (min-width: 30rem) {
+    padding: 2.5rem 2rem;
+  }
 `
 
 const ShareIcon = styled(IconContainer)`
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 1.5rem;
-  font-size: 2rem;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 0.75rem;
+  font-size: 1.25rem;
+  border-radius: 12px;
+
+  @media (min-width: 30rem) {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    border-radius: 16px;
+  }
 `
 
 const ShareChatTitle = styled.h2`
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 700;
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.375rem 0;
   color: #222;
+
+  @media (min-width: 30rem) {
+    font-size: 1.5rem;
+    margin: 0 0 0.75rem 0;
+  }
 
   @media (prefers-color-scheme: dark) {
     color: #e5e5e5;
@@ -102,10 +126,16 @@ const ShareChatTitle = styled.h2`
 `
 
 const ShareChatLabel = styled.p`
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   color: #666;
-  margin: 0 0 2rem 0;
+  margin: 0 0 1rem 0;
+
+  @media (min-width: 30rem) {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0 0 2rem 0;
+  }
 
   @media (prefers-color-scheme: dark) {
     color: #999;
@@ -113,16 +143,25 @@ const ShareChatLabel = styled.p`
 `
 
 const StyledLinkDisplay = styled(LinkDisplayContainer)`
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+
+  @media (min-width: 30rem) {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
 `
 
 const ButtonGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 
   @media (min-width: 30rem) {
     flex-direction: row;
+    gap: 0.75rem;
   }
 `
 
@@ -263,7 +302,7 @@ export default function ConversationView() {
   const navigate = useNavigate()
   const { convoId } = useParams()
   const { user: authUser, accessToken } = useSelector(
-    (state: RootState) => state.auth
+    (state: RootState) => state.auth,
   )
   const [user, setUser] = useContext(UserContext)
   const [shouldEditUser, setShouldEditUser] = useState(false)
@@ -276,7 +315,7 @@ export default function ConversationView() {
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
   const [doesChatExist, setDoesChatExist] = useState<boolean>()
   const [showNotificationButton, setShowNotificationButton] = useState(
-    'Notification' in window && Notification.permission === 'default'
+    'Notification' in window && Notification.permission === 'default',
   )
   const daysRemaining = deletionDate
     ? getDaysRemaining(new Date(), deletionDate)
@@ -494,7 +533,7 @@ export default function ConversationView() {
             userProfilePic: msg['senderAvatar'],
             userFullName: msg['senderName'],
             delivered: 'delivered',
-          })
+          }),
         )
         setIsLoadingMessages(false)
         setMessages(parsedMessages)
@@ -533,7 +572,7 @@ export default function ConversationView() {
           return
         }
         // Message successfully sent and will appear via 'message-created' event
-      }
+      },
     )
   }
 
