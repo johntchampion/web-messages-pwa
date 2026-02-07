@@ -539,7 +539,7 @@ export default function NewConversation() {
   }
 
   if (!isLoggedIn) {
-    return <Navigate to='/auth' replace />
+    return <Navigate to='/login' replace />
   }
 
   return (
