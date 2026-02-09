@@ -119,18 +119,33 @@ export const logIn = createAsyncThunk<
   AuthResponse,
   Credentials,
   AsyncThunkConfig
->('auth/logIn', async (credentials) => {
-  const response = await restAPI.put<AuthResponse>('/auth/login', credentials)
-  return response.data
+>('auth/logIn', async (credentials, { rejectWithValue }) => {
+  try {
+    const response = await restAPI.put<AuthResponse>('/auth/login', credentials)
+    return response.data
+  } catch (error: any) {
+    return rejectWithValue(
+      error.response?.data?.message || error.message || 'Login failed',
+    )
+  }
 })
 
 export const signUp = createAsyncThunk<
   AuthResponse,
   SignUpData,
   AsyncThunkConfig
->('auth/signUp', async (signUpData) => {
-  const response = await restAPI.post<AuthResponse>('/auth/signup', signUpData)
-  return response.data
+>('auth/signUp', async (signUpData, { rejectWithValue }) => {
+  try {
+    const response = await restAPI.post<AuthResponse>(
+      '/auth/signup',
+      signUpData,
+    )
+    return response.data
+  } catch (error: any) {
+    return rejectWithValue(
+      error.response?.data?.message || error.message || 'Sign up failed',
+    )
+  }
 })
 
 export const refresh = createAsyncThunk<AuthResponse, void, AsyncThunkConfig>(
@@ -145,7 +160,7 @@ export const refresh = createAsyncThunk<AuthResponse, void, AsyncThunkConfig>(
       refreshToken,
     })
     return response.data
-  }
+  },
 )
 
 export const logOut = createAsyncThunk<void, void, AsyncThunkConfig>(
@@ -159,14 +174,14 @@ export const logOut = createAsyncThunk<void, void, AsyncThunkConfig>(
     await restAPI.post('/auth/logout', {
       refreshToken,
     })
-  }
+  },
 )
 
 export const logOutEverywhere = createAsyncThunk<void, void, AsyncThunkConfig>(
   'auth/logOutEverywhere',
   async () => {
     await restAPI.post('/auth/logout-everywhere')
-  }
+  },
 )
 
 export const authSlice = createSlice({
@@ -182,7 +197,7 @@ export const authSlice = createSlice({
     },
     updateUserProfile: (
       state,
-      action: PayloadAction<{ displayName: string; profilePicURL: string }>
+      action: PayloadAction<{ displayName: string; profilePicURL: string }>,
     ) => {
       if (!state.user) {
         return
@@ -235,7 +250,7 @@ export const authSlice = createSlice({
       state.accessToken = null
       state.refreshToken = null
       state.isLoading = false
-      state.error = action.error.message || 'Login failed'
+      state.error = action.payload || 'Login failed'
       clearRefreshToken()
     })
     builder.addCase(logIn.pending, (state) => {
@@ -255,7 +270,7 @@ export const authSlice = createSlice({
       state.accessToken = null
       state.refreshToken = null
       state.isLoading = false
-      state.error = action.error.message || 'Sign up failed'
+      state.error = action.payload || 'Sign up failed'
       clearRefreshToken()
     })
     builder.addCase(signUp.pending, (state) => {
