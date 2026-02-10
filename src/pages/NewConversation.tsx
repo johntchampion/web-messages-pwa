@@ -1,6 +1,6 @@
 /// <reference types="vite-plugin-svgr/client" />
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import styled from 'styled-components'
@@ -182,6 +182,17 @@ const ListCellTitle = styled.span`
   }
 `
 
+const ListCellSubtitle = styled.span`
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--accent-color);
+  margin-top: 0.15rem;
+
+  @media (prefers-color-scheme: dark) {
+    color: #a39dc9;
+  }
+`
+
 const ExpiryBadge = styled.div`
   padding: 0.4rem 0.75rem;
   background: rgba(64, 61, 88, 0.08);
@@ -200,20 +211,26 @@ const ExpiryBadge = styled.div`
   }
 `
 
-const DeleteButton = styled.button`
+const ActionButton = styled.button<{ $variant: 'remove' | 'delete' }>`
   padding: 0.4rem 0.75rem;
-  background: rgba(220, 53, 69, 0.1);
+  background: ${(props) =>
+    props.$variant === 'delete'
+      ? 'rgba(220, 53, 69, 0.1)'
+      : 'rgba(108, 117, 125, 0.1)'};
   border: none;
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #dc3545;
+  color: ${(props) => (props.$variant === 'delete' ? '#dc3545' : '#6c757d')};
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(220, 53, 69, 0.2);
+    background: ${(props) =>
+      props.$variant === 'delete'
+        ? 'rgba(220, 53, 69, 0.2)'
+        : 'rgba(108, 117, 125, 0.2)'};
     transform: scale(1.05);
   }
 
@@ -222,11 +239,17 @@ const DeleteButton = styled.button`
   }
 
   @media (prefers-color-scheme: dark) {
-    background: rgba(220, 53, 69, 0.15);
-    color: #ff6b7a;
+    background: ${(props) =>
+      props.$variant === 'delete'
+        ? 'rgba(220, 53, 69, 0.15)'
+        : 'rgba(108, 117, 125, 0.15)'};
+    color: ${(props) => (props.$variant === 'delete' ? '#ff6b7a' : '#adb5bd')};
 
     &:hover {
-      background: rgba(220, 53, 69, 0.25);
+      background: ${(props) =>
+        props.$variant === 'delete'
+          ? 'rgba(220, 53, 69, 0.25)'
+          : 'rgba(108, 117, 125, 0.25)'};
     }
   }
 `
@@ -267,12 +290,16 @@ const PrevousChatCell = ({
   convoId,
   name,
   daysRemaining,
+  isOwned,
   onDelete,
+  onHide,
 }: {
   convoId: string
   name: string
   daysRemaining: number
+  isOwned: boolean
   onDelete: (convoId: string) => void
+  onHide: (convoId: string) => void
 }) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -283,17 +310,32 @@ const PrevousChatCell = ({
     }
   }
 
+  const handleRemove = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onHide(convoId)
+  }
+
   return (
     <Link to={`/${convoId}`} style={{ textDecoration: 'none' }}>
       <ListCell>
         <ConversationInfo>
           <ListCellTitle>{name}</ListCellTitle>
+          {isOwned && <ListCellSubtitle>My Conversation</ListCellSubtitle>}
         </ConversationInfo>
         <ConversationActions>
           <ExpiryBadge>
             ⏱ {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}
           </ExpiryBadge>
-          <DeleteButton onClick={handleDelete}>Delete</DeleteButton>
+          {isOwned ? (
+            <ActionButton $variant='delete' onClick={handleDelete}>
+              Delete
+            </ActionButton>
+          ) : (
+            <ActionButton $variant='remove' onClick={handleRemove}>
+              Remove
+            </ActionButton>
+          )}
         </ConversationActions>
       </ListCell>
     </Link>
@@ -356,6 +398,7 @@ export default function NewConversation() {
         updatedAt: string
         creatorId: string
         deletionDate: string
+        visitedAt: string
       }>
     }): StoredConversationType[] => {
       return payload.conversations.map((convo) => ({
@@ -363,6 +406,8 @@ export default function NewConversation() {
         name: convo.name,
         dateStored: new Date(convo.updatedAt),
         deletionDate: new Date(convo.deletionDate),
+        creatorId: convo.creatorId,
+        visitedAt: new Date(convo.visitedAt),
       }))
     },
     []
@@ -502,6 +547,30 @@ export default function NewConversation() {
     </InputRow>
   )
 
+  const handleHideConversation = (convoId: string) => {
+    if (!isLoggedIn || !isSocketConnected) {
+      return
+    }
+
+    socket.emit(
+      'remove-conversation-visit',
+      {
+        convoId,
+        token: '',
+      },
+      (response: any) => {
+        if (response?.success) {
+          fetchConversations()
+        } else {
+          setConvoError(
+            response?.error ||
+              'Failed to hide conversation. Please try again.'
+          )
+        }
+      }
+    )
+  }
+
   const handleDeleteConversation = (convoId: string) => {
     if (!isLoggedIn || !isSocketConnected) {
       return
@@ -532,6 +601,12 @@ export default function NewConversation() {
     setConvoName('')
   }
 
+  const sortedConversations = useMemo(() => {
+    return [...previousConvos].sort((a, b) => {
+      return b.visitedAt.getTime() - a.visitedAt.getTime()
+    })
+  }, [previousConvos])
+
   const appName = import.meta.env.VITE_APP_NAME || "Web Messages"
 
   if (authState.isInitializing) {
@@ -557,17 +632,19 @@ export default function NewConversation() {
         {convoError && <StyledErrorText>{convoError}</StyledErrorText>}
       </StyledCard>
 
-      {previousConvos.length > 0 && (
+      {sortedConversations.length > 0 && (
         <StyledCard $variant='transparent'>
           <CardTitle>Your Conversations</CardTitle>
           <ConversationsList>
-            {previousConvos.map((c) => (
+            {sortedConversations.map((c) => (
               <PrevousChatCell
                 key={c.convoId}
                 convoId={c.convoId}
                 name={c.name}
                 daysRemaining={getDaysRemaining(new Date(), c.deletionDate)}
+                isOwned={c.creatorId === authState.user?.id}
                 onDelete={handleDeleteConversation}
+                onHide={handleHideConversation}
               />
             ))}
           </ConversationsList>
