@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux'
 import { useParams, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
-import { MessageType } from '../types'
+import { MessageType, PageInfo } from '../types'
 import getDaysRemaining from '../util/daysRemaining'
 import socket from '../util/socket'
 import UserContext from '../util/userContext'
@@ -314,6 +314,8 @@ export default function ConversationView() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
   const [doesChatExist, setDoesChatExist] = useState<boolean>()
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false)
   const [showNotificationButton, setShowNotificationButton] = useState(
     'Notification' in window && Notification.permission === 'default',
   )
@@ -495,6 +497,7 @@ export default function ConversationView() {
     if (!isSocketConnected || !convoId) return
 
     setIsLoadingMessages(true)
+    setPageInfo(null)  
 
     // Join the conversation room to receive real-time updates
     socket.emit('join-conversation', { convoId }, (response: any) => {
@@ -512,7 +515,7 @@ export default function ConversationView() {
       }
 
       // Fetch messages for this conversation
-      socket.emit('list-messages', { convoId }, (response: any) => {
+      socket.emit('list-messages', { convoId, token: '', limit: 50 }, (response: any) => {
         if (!response.success) {
           if (response.error?.includes('no conversation')) {
             setDoesChatExist(false)
@@ -540,6 +543,9 @@ export default function ConversationView() {
         setConvoName(response.data.conversation['name'])
         setDeletionDate(new Date(response.data.deletionDate))
         setDoesChatExist(true)
+        if (response.data.pageInfo) {
+          setPageInfo(response.data.pageInfo)
+        }
       })
     })
 
@@ -548,6 +554,17 @@ export default function ConversationView() {
       socket.emit('leave-conversation', { convoId })
     }
   }, [isSocketConnected, convoId])
+
+  // Record this conversation as recently visited for logged-in users.
+  // This is a separate effect because on direct page loads (e.g. clicking a shared link),
+  // the access token is not yet available when the list-messages effect above fires —
+  // initializeAuth completes after the socket connects. Since list-messages succeeds
+  // without auth, the socket middleware's retry mechanism can't help. This effect waits
+  // for both the token and confirmed conversation existence before recording the visit.
+  useEffect(() => {
+    if (!isSocketConnected || !convoId || !accessToken || !doesChatExist) return
+    socket.emit('get-conversation', { convoId, token: '' }, () => {})
+  }, [isSocketConnected, convoId, accessToken, doesChatExist])
 
   const sendMessageHandler = (messageContent: string) => {
     if (!messageContent || !convoId) return
@@ -572,6 +589,44 @@ export default function ConversationView() {
           return
         }
         // Message successfully sent and will appear via 'message-created' event
+      },
+    )
+  }
+
+  const handleLoadOlderMessages = () => {
+    if (!convoId || !pageInfo?.hasMore || isLoadingOlderMessages) return
+
+    setIsLoadingOlderMessages(true)
+
+    socket.emit(
+      'list-messages',
+      { convoId, token: '', limit: 50, before: pageInfo.startCursor },
+      (response: any) => {
+        setIsLoadingOlderMessages(false)
+
+        if (!response.success) {
+          console.error('Failed to load older messages:', response.error)
+          return
+        }
+
+        const olderMessages: MessageType[] = response.data.messages.map(
+          (msg: any) => ({
+            id: msg['id'],
+            userId:
+              msg['senderId'] || `${msg['senderName']}-${msg['senderAvatar']}`,
+            timestamp: new Date(msg['createdAt']),
+            content: msg['content'],
+            type: msg['type'],
+            userProfilePic: msg['senderAvatar'],
+            userFullName: msg['senderName'],
+            delivered: 'delivered',
+          }),
+        )
+
+        setMessages((prev) => [...olderMessages, ...prev])
+        if (response.data.pageInfo) {
+          setPageInfo(response.data.pageInfo)
+        }
       },
     )
   }
@@ -624,9 +679,9 @@ export default function ConversationView() {
         ) : (
           <MessageView
             highlightId={authUser?.id || `${user.name}-${user.avatar}`}
-            isLoadingOlderMessages={false}
-            onLoadOlderMessages={() => {}}
-            showLoadOlderMessagesButton={false}
+            isLoadingOlderMessages={isLoadingOlderMessages}
+            onLoadOlderMessages={handleLoadOlderMessages}
+            showLoadOlderMessagesButton={pageInfo?.hasMore ?? false}
             messages={messages}
           />
         )}

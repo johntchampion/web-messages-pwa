@@ -3,6 +3,8 @@ export type StoredConversationType = {
   name: string
   dateStored: Date
   deletionDate: Date
+  creatorId: string
+  visitedAt: Date
 }
 
 export type MessageType = {
@@ -16,8 +18,15 @@ export type MessageType = {
   delivered: string
 }
 
+export type PageInfo = {
+  hasMore: boolean
+  startCursor: string | null
+  endCursor: string | null
+}
+
 export type MessagesPayloadType = {
   messages: any[]
   conversation: any
   deletionDate: Date
+  pageInfo: PageInfo
 }
