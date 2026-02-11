@@ -119,13 +119,15 @@ const ConversationsList = styled.div`
   }
 `
 
-const ListCell = styled.div`
+const ListCell = styled.div<{ $isOwned?: boolean }>`
   box-sizing: border-box;
   padding: 1.25rem 1.5rem;
   background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   border-radius: 14px;
   border: 2px solid rgba(0, 0, 0, 0.04);
+  border-left: ${(props) =>
+    props.$isOwned ? '4px solid var(--accent-color)' : '2px solid rgba(0, 0, 0, 0.04)'};
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex;
@@ -136,6 +138,8 @@ const ListCell = styled.div`
 
   &:hover {
     border-color: var(--accent-color);
+    ${(props) =>
+      props.$isOwned && 'border-left-color: var(--accent-color);'}
     box-shadow: 0 8px 24px rgba(64, 61, 88, 0.15),
       0 2px 8px rgba(64, 61, 88, 0.08);
   }
@@ -147,10 +151,14 @@ const ListCell = styled.div`
   @media (prefers-color-scheme: dark) {
     background: linear-gradient(135deg, #2d2d2d 0%, #262626 100%);
     border-color: rgba(255, 255, 255, 0.08);
+    border-left: ${(props) =>
+      props.$isOwned ? '4px solid var(--accent-color)' : '2px solid rgba(255, 255, 255, 0.08)'};
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
 
     &:hover {
       border-color: var(--accent-color);
+      ${(props) =>
+        props.$isOwned && 'border-left-color: var(--accent-color);'}
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5),
         0 2px 8px rgba(120, 114, 159, 0.2);
     }
@@ -167,6 +175,8 @@ const ConversationInfo = styled.div`
   gap: 0.25rem;
   flex: 1;
   min-width: 0;
+  min-height: 2.75rem;
+  justify-content: center;
 `
 
 const ListCellTitle = styled.span`
@@ -213,6 +223,7 @@ const ExpiryBadge = styled.div`
 
 const ActionButton = styled.button<{ $variant: 'remove' | 'delete' }>`
   padding: 0.4rem 0.75rem;
+  min-width: 5rem;
   background: ${(props) =>
     props.$variant === 'delete'
       ? 'rgba(220, 53, 69, 0.1)'
@@ -318,7 +329,7 @@ const PrevousChatCell = ({
 
   return (
     <Link to={`/${convoId}`} style={{ textDecoration: 'none' }}>
-      <ListCell>
+      <ListCell $isOwned={isOwned}>
         <ConversationInfo>
           <ListCellTitle>{name}</ListCellTitle>
           {isOwned && <ListCellSubtitle>My Conversation</ListCellSubtitle>}
