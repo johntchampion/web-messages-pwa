@@ -497,6 +497,7 @@ export default function ConversationView() {
     if (!isSocketConnected || !convoId) return
 
     setIsLoadingMessages(true)
+    setPageInfo(null)  
 
     // Join the conversation room to receive real-time updates
     socket.emit('join-conversation', { convoId }, (response: any) => {
