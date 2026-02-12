@@ -1,4 +1,11 @@
-import { useState, useEffect, useContext } from 'react'
+import {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react'
 import { useSelector } from 'react-redux'
 import { useParams, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -319,9 +326,23 @@ export default function ConversationView() {
   const [showNotificationButton, setShowNotificationButton] = useState(
     'Notification' in window && Notification.permission === 'default',
   )
+  const [typingUsers, setTypingUsers] = useState<
+    Map<string, { timeout: NodeJS.Timeout; timestamp: number }>
+  >(new Map())
+  const lastTypingEmit = useRef<number>(0)
+
   const daysRemaining = deletionDate
     ? getDaysRemaining(new Date(), deletionDate)
     : undefined
+
+  // Clear typing state and timeouts when switching conversations
+  useEffect(() => {
+    setTypingUsers((prev) => {
+      prev.forEach(({ timeout }) => clearTimeout(timeout))
+      return new Map()
+    })
+    lastTypingEmit.current = 0
+  }, [convoId])
 
   const handleNotificationToggle = () => {
     if (!('Notification' in window)) return
@@ -336,6 +357,25 @@ export default function ConversationView() {
       setShowNotificationButton(false)
     })
   }
+
+  const handleTyping = useCallback(() => {
+    const now = Date.now()
+    if (now - lastTypingEmit.current < 2000) return
+    lastTypingEmit.current = now
+
+    const userName = authUser?.displayName || user.name
+    if (convoId && userName) {
+      socket.emit('typing', { convoId, userName })
+    }
+  }, [convoId, authUser?.displayName, user.name])
+
+  const typingIndicatorText = useMemo(() => {
+    const names = Array.from(typingUsers.keys())
+    if (names.length === 0) return ''
+    if (names.length === 1) return `${names[0]} is typing...`
+    if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`
+    return `${names.slice(0, 2).join(', ')} and ${names.length - 2} other${names.length - 2 > 1 ? 's' : ''} are typing...`
+  }, [typingUsers])
 
   // Handle WebSocket events.
   useEffect(() => {
@@ -364,6 +404,19 @@ export default function ConversationView() {
         sendNotification(`${newMessage['senderName']} in ${convoName}`, {
           body: newMessage['content'],
           icon: avatarIcon,
+        })
+      }
+
+      // Clear typing indicator for the sender since their message arrived
+      const senderName = newMessage['senderName']
+      if (senderName) {
+        setTypingUsers((prev) => {
+          const existing = prev.get(senderName)
+          if (!existing) return prev
+          clearTimeout(existing.timeout)
+          const next = new Map(prev)
+          next.delete(senderName)
+          return next
         })
       }
 
@@ -415,6 +468,37 @@ export default function ConversationView() {
       setDeletionDate(undefined)
       setDoesChatExist(false)
     }
+    const onUserTyping = (payload: any) => {
+      if (payload.convoId !== convoId) return
+      const { userName } = payload
+
+      setTypingUsers((prev) => {
+        const next = new Map(prev)
+        // Clear existing timeout for this user
+        const existing = next.get(userName)
+        if (existing) clearTimeout(existing.timeout)
+
+        // Capture timestamp for this typing event
+        const timestamp = Date.now()
+
+        // Set a new 5-second auto-clear timeout
+        const timeout = setTimeout(() => {
+          setTypingUsers((prev) => {
+            const current = prev.get(userName)
+            // Only remove if this timeout hasn't been superseded by a newer event
+            if (current && current.timestamp === timestamp) {
+              const updated = new Map(prev)
+              updated.delete(userName)
+              return updated
+            }
+            return prev
+          })
+        }, 3000)
+
+        next.set(userName, { timeout, timestamp })
+        return next
+      })
+    }
 
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
@@ -422,6 +506,7 @@ export default function ConversationView() {
     socket.on('conversation-updated', onConversationUpdated)
     socket.on('user-updated', onUserUpdated)
     socket.on('conversation-deleted', onConversationDeleted)
+    socket.on('user-typing', onUserTyping)
 
     // Check current state after setting up listeners to avoid race condition
     if (socket.connected) {
@@ -435,6 +520,7 @@ export default function ConversationView() {
       socket.off('conversation-updated', onConversationUpdated)
       socket.off('user-updated', onUserUpdated)
       socket.off('conversation-deleted', onConversationDeleted)
+      socket.off('user-typing', onUserTyping)
     }
   }, [convoId, authUser, user, convoName])
 
@@ -497,7 +583,7 @@ export default function ConversationView() {
     if (!isSocketConnected || !convoId) return
 
     setIsLoadingMessages(true)
-    setPageInfo(null)  
+    setPageInfo(null)
 
     // Join the conversation room to receive real-time updates
     socket.emit('join-conversation', { convoId }, (response: any) => {
@@ -515,38 +601,43 @@ export default function ConversationView() {
       }
 
       // Fetch messages for this conversation
-      socket.emit('list-messages', { convoId, token: '', limit: 50 }, (response: any) => {
-        if (!response.success) {
-          if (response.error?.includes('no conversation')) {
-            setDoesChatExist(false)
+      socket.emit(
+        'list-messages',
+        { convoId, token: '', limit: 50 },
+        (response: any) => {
+          if (!response.success) {
+            if (response.error?.includes('no conversation')) {
+              setDoesChatExist(false)
+            }
+            setIsLoadingMessages(false)
+            console.error('Failed to fetch messages:', response.error)
+            return
           }
-          setIsLoadingMessages(false)
-          console.error('Failed to fetch messages:', response.error)
-          return
-        }
 
-        const parsedMessages: MessageType[] = response.data.messages.map(
-          (msg: any) => ({
-            id: msg['id'],
-            userId:
-              msg['senderId'] || `${msg['senderName']}-${msg['senderAvatar']}`,
-            timestamp: new Date(msg['createdAt']),
-            content: msg['content'],
-            type: msg['type'],
-            userProfilePic: msg['senderAvatar'],
-            userFullName: msg['senderName'],
-            delivered: 'delivered',
-          }),
-        )
-        setIsLoadingMessages(false)
-        setMessages(parsedMessages)
-        setConvoName(response.data.conversation['name'])
-        setDeletionDate(new Date(response.data.deletionDate))
-        setDoesChatExist(true)
-        if (response.data.pageInfo) {
-          setPageInfo(response.data.pageInfo)
-        }
-      })
+          const parsedMessages: MessageType[] = response.data.messages.map(
+            (msg: any) => ({
+              id: msg['id'],
+              userId:
+                msg['senderId'] ||
+                `${msg['senderName']}-${msg['senderAvatar']}`,
+              timestamp: new Date(msg['createdAt']),
+              content: msg['content'],
+              type: msg['type'],
+              userProfilePic: msg['senderAvatar'],
+              userFullName: msg['senderName'],
+              delivered: 'delivered',
+            }),
+          )
+          setIsLoadingMessages(false)
+          setMessages(parsedMessages)
+          setConvoName(response.data.conversation['name'])
+          setDeletionDate(new Date(response.data.deletionDate))
+          setDoesChatExist(true)
+          if (response.data.pageInfo) {
+            setPageInfo(response.data.pageInfo)
+          }
+        },
+      )
     })
 
     // Cleanup: Leave the conversation room when component unmounts or convoId changes
@@ -683,6 +774,7 @@ export default function ConversationView() {
             onLoadOlderMessages={handleLoadOlderMessages}
             showLoadOlderMessagesButton={pageInfo?.hasMore ?? false}
             messages={messages}
+            typingIndicator={typingIndicatorText}
           />
         )}
         {!authUser && user.name.length === 0 ? (
@@ -693,6 +785,7 @@ export default function ConversationView() {
             disableUpload={true}
             onUploadFile={() => {}}
             sendMessage={sendMessageHandler}
+            onTyping={handleTyping}
           />
         )}
       </div>

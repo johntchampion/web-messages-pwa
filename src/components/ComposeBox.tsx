@@ -150,6 +150,7 @@ type ComposeBox = {
   becameActive: () => void
   onUploadFile: () => void
   disableUpload: boolean
+  onTyping?: () => void
 }
 
 const ComposeBox = ({
@@ -157,6 +158,7 @@ const ComposeBox = ({
   becameActive,
   onUploadFile,
   disableUpload,
+  onTyping,
 }: ComposeBox) => {
   const [message, setMessage] = useState<string>('')
   const [active, setActive] = useState<boolean>(false)
@@ -215,6 +217,7 @@ const ComposeBox = ({
             onChange={(event) => {
               setMessage(event.target.value)
               adjustTextareaHeight()
+              onTyping?.()
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
