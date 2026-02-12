@@ -335,6 +335,15 @@ export default function ConversationView() {
     ? getDaysRemaining(new Date(), deletionDate)
     : undefined
 
+  // Clear typing state and timeouts when switching conversations
+  useEffect(() => {
+    setTypingUsers((prev) => {
+      prev.forEach(({ timeout }) => clearTimeout(timeout))
+      return new Map()
+    })
+    lastTypingEmit.current = 0
+  }, [convoId])
+
   const handleNotificationToggle = () => {
     if (!('Notification' in window)) return
 
@@ -395,6 +404,19 @@ export default function ConversationView() {
         sendNotification(`${newMessage['senderName']} in ${convoName}`, {
           body: newMessage['content'],
           icon: avatarIcon,
+        })
+      }
+
+      // Clear typing indicator for the sender since their message arrived
+      const senderName = newMessage['senderName']
+      if (senderName) {
+        setTypingUsers((prev) => {
+          const existing = prev.get(senderName)
+          if (!existing) return prev
+          clearTimeout(existing.timeout)
+          const next = new Map(prev)
+          next.delete(senderName)
+          return next
         })
       }
 
