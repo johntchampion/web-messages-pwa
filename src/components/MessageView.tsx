@@ -109,7 +109,7 @@ const DateSeparator = styled.div`
 
 const View = styled.div<{ $margin?: string }>`
   width: 100%;
-  margin: ${(props) => props.$margin || '82px auto 92px auto'};
+  margin: ${(props) => props.$margin || '82px auto 120px auto'};
   max-width: 40rem;
 
   @media (min-width: 40rem) {
@@ -120,6 +120,17 @@ const View = styled.div<{ $margin?: string }>`
 const ViewLoadMessagesButtonContainer = styled.div`
   text-align: center;
   margin: 1rem 0;
+`
+
+const TypingIndicatorText = styled.div`
+  font-size: 13px;
+  font-style: italic;
+  color: #999;
+  padding: 4px 16px 8px 16px;
+
+  @media (prefers-color-scheme: dark) {
+    color: #777;
+  }
 `
 
 type BubbleProps = {
@@ -144,6 +155,7 @@ type ViewProps = {
   onLoadOlderMessages: () => void
   isLoadingOlderMessages: boolean
   margin?: string
+  typingIndicator?: string
 }
 
 const formatTime = (date: Date): string => {
@@ -270,6 +282,7 @@ const MessageView = ({
   onLoadOlderMessages,
   margin,
   messages,
+  typingIndicator,
 }: ViewProps) => {
   const sortedMessages = messages
     .map((msg) => ({ ...msg }))
@@ -342,6 +355,9 @@ const MessageView = ({
           </div>
         )
       })}
+      {typingIndicator && (
+        <TypingIndicatorText>{typingIndicator}</TypingIndicatorText>
+      )}
     </View>
   )
 }
