@@ -125,6 +125,9 @@ const EditConversationDialog = ({
   const [error, setError] = useState<string | null>(null)
 
   const handleSave = async () => {
+    // Prevent duplicate saves while already saving
+    if (isSaving) return
+
     const trimmedName = name.trim()
 
     if (!trimmedName) {
@@ -161,7 +164,7 @@ const EditConversationDialog = ({
   }
 
   return (
-    <Backdrop onClick={onDismiss}>
+    <Backdrop onClick={() => !isSaving && onDismiss()}>
       <ModalContainer onClick={(e) => e.stopPropagation()}>
         <ModalTitle>Edit Conversation</ModalTitle>
         <FormSection>
