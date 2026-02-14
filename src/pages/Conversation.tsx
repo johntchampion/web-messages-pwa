@@ -20,6 +20,7 @@ import NavBar from '../components/NavBar'
 import ComposeBox from '../components/ComposeBox'
 import EditProfile from '../components/EditProfile'
 import SetupProfileButton from '../components/SetupProfileButton'
+import EditConversationDialog from '../components/EditConversationDialog'
 import type { RootState } from '../store/store'
 import {
   Card,
@@ -316,6 +317,7 @@ export default function ConversationView() {
 
   const [isSocketConnected, setIsSocketConnected] = useState(socket.connected)
   const [convoName, setConvoName] = useState('')
+  const [convoCreatorId, setConvoCreatorId] = useState<string | null>(null)
   const [deletionDate, setDeletionDate] = useState<Date>()
   const [messages, setMessages] = useState<MessageType[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
@@ -326,6 +328,7 @@ export default function ConversationView() {
   const [showNotificationButton, setShowNotificationButton] = useState(
     'Notification' in window && Notification.permission === 'default',
   )
+  const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [typingUsers, setTypingUsers] = useState<
     Map<string, { timeout: NodeJS.Timeout; timestamp: number }>
   >(new Map())
@@ -437,6 +440,7 @@ export default function ConversationView() {
     }
     const onConversationUpdated = (payload: any) => {
       setConvoName(payload.conversation['name'])
+      setConvoCreatorId(payload.conversation['creatorId'] || null)
       setDeletionDate(new Date(payload.deletionDate))
     }
     const onUserUpdated = (payload: any) => {
@@ -631,6 +635,7 @@ export default function ConversationView() {
           setIsLoadingMessages(false)
           setMessages(parsedMessages)
           setConvoName(response.data.conversation['name'])
+          setConvoCreatorId(response.data.conversation['creatorId'] || null)
           setDeletionDate(new Date(response.data.deletionDate))
           setDoesChatExist(true)
           if (response.data.pageInfo) {
@@ -722,6 +727,49 @@ export default function ConversationView() {
     )
   }
 
+  const handleRenameConversation = (newName: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!convoId) {
+        reject(new Error('Conversation ID is required.'))
+        return
+      }
+
+      socket.emit(
+        'update-conversation',
+        {
+          convoId,
+          name: newName,
+          token: accessToken,
+        },
+        (response: any) => {
+          if (!response.success) {
+            reject(new Error(response.error || 'Failed to rename conversation.'))
+            return
+          }
+
+          // Update local state with the new conversation data
+          setConvoName(response.data.conversation['name'])
+          setConvoCreatorId(response.data.conversation['creatorId'] || null)
+          setDeletionDate(new Date(response.data.deletionDate))
+
+          resolve()
+        },
+      )
+    })
+  }
+
+  // Determine if the current user can rename the conversation
+  const canRenameConversation = useMemo(() => {
+    // If conversation doesn't exist yet, can't rename
+    if (doesChatExist === false || doesChatExist === undefined) return false
+
+    // If conversation has no creator (creatorId is null), anyone can rename
+    if (convoCreatorId === null) return true
+
+    // If conversation has a creator, only that creator can rename
+    return authUser?.id === convoCreatorId
+  }, [doesChatExist, convoCreatorId, authUser?.id])
+
   // If chat doesn't exist, show only the error view
   if (doesChatExist === false) {
     return (
@@ -745,6 +793,13 @@ export default function ConversationView() {
           onDismiss={() => setShouldEditUser(false)}
         />
       )}
+      {showRenameDialog && (
+        <EditConversationDialog
+          currentName={convoName}
+          onRename={handleRenameConversation}
+          onDismiss={() => setShowRenameDialog(false)}
+        />
+      )}
       <div>
         <NavBar
           title={doesChatExist === undefined ? 'Loading...' : convoName}
@@ -762,6 +817,7 @@ export default function ConversationView() {
           onNotificationToggle={
             showNotificationButton ? handleNotificationToggle : undefined
           }
+          onRenameClick={canRenameConversation ? () => setShowRenameDialog(true) : undefined}
         />
         {showLoadingIndicator ? (
           <LoadingIndicator />
