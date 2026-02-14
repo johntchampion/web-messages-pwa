@@ -40,7 +40,7 @@ const TitleStack = styled.div`
   min-width: 0;
 `
 
-const Title = styled.div`
+const Title = styled.div<{ $clickable?: boolean }>`
   font-size: 1.35rem;
   font-weight: 800;
   ${gradientTextStyle}
@@ -48,6 +48,21 @@ const Title = styled.div`
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  cursor: ${(props) => (props.$clickable ? 'pointer' : 'default')};
+  transition: opacity 0.2s ease;
+  user-select: none;
+
+  ${(props) =>
+    props.$clickable &&
+    `
+    &:hover {
+      opacity: 0.7;
+    }
+
+    &:active {
+      opacity: 0.5;
+    }
+  `}
 `
 
 const Subtitle = styled.div`
@@ -244,6 +259,7 @@ type NavBar = {
   userAvatar?: string
   isAnonymous?: boolean
   onNotificationToggle?: () => void
+  onRenameClick?: () => void
 }
 
 const NavBar = ({
@@ -254,6 +270,7 @@ const NavBar = ({
   userAvatar,
   isAnonymous = false,
   onNotificationToggle,
+  onRenameClick,
 }: NavBar) => {
   const navigate = useNavigate()
   const avatarSrc = userAvatar ? ICON_MAP[userAvatar] : undefined
@@ -262,7 +279,13 @@ const NavBar = ({
     <Container>
       <Content>
         <TitleStack>
-          <Title>{title}</Title>
+          <Title
+            $clickable={!!onRenameClick}
+            onClick={onRenameClick}
+            title={onRenameClick ? 'Click to rename conversation' : undefined}
+          >
+            {title}
+          </Title>
           {subtitle && <Subtitle>⏱ {subtitle}</Subtitle>}
         </TitleStack>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
