@@ -39,7 +39,7 @@ const moveUp = keyframes`
 `
 
 const Backdrop = styled.div`
-  position: fixed;
+  position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
@@ -49,7 +49,8 @@ const Backdrop = styled.div`
   background: rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  overflow-y: auto;
   padding: 1rem;
   z-index: 100;
   animation: ${appear} 0.2s ease-out;
@@ -64,6 +65,7 @@ const ModalContainer = styled(Card)`
   width: calc(100% - 2rem);
   max-width: 360px;
   padding: 1.5rem;
+  margin: auto 0;
   animation: ${moveUp} 0.2s ease-out;
 
   @media (min-width: 30rem) {

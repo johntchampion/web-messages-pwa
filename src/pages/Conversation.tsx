@@ -852,7 +852,9 @@ export default function ConversationView() {
   }
 
   return (
-    <>
+    <ConversationLayout
+      style={{ height: `${viewportHeight}px`, top: `${viewportOffsetTop}px` }}
+    >
       {shouldEditUser && (
         <EditProfile
           user={user}
@@ -870,9 +872,6 @@ export default function ConversationView() {
           onDismiss={() => setShowRenameDialog(false)}
         />
       )}
-      <ConversationLayout
-        style={{ height: `${viewportHeight}px`, top: `${viewportOffsetTop}px` }}
-      >
         <ScrollableArea ref={scrollAreaRef}>
           <ScrollContent>
             <NavBar
@@ -927,7 +926,6 @@ export default function ConversationView() {
             )}
           </ScrollContent>
         </ScrollableArea>
-      </ConversationLayout>
-    </>
+    </ConversationLayout>
   )
 }
