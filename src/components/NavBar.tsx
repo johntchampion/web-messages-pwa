@@ -12,13 +12,12 @@ import {
 } from './shared/StyledComponents'
 
 const Container = styled(GlassmorphicContainer)`
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  padding: 1rem 1rem 1.25rem;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) 1.25rem calc(1rem + env(safe-area-inset-left, 0px));
   border: 0;
   z-index: 10;
+  flex-shrink: 0;
 `
 
 const Content = styled.div`

@@ -21,6 +21,7 @@ import ComposeBox from '../components/ComposeBox'
 import EditProfile from '../components/EditProfile'
 import SetupProfileButton from '../components/SetupProfileButton'
 import EditConversationDialog from '../components/EditConversationDialog'
+import useViewportHeight from '../hooks/useViewportHeight'
 import type { RootState } from '../store/store'
 import {
   Card,
@@ -32,6 +33,36 @@ import {
 } from '../components/shared/StyledComponents'
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Web Messages'
+
+const ConversationLayout = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`
+
+const ScrollableArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  min-height: 0;
+`
+
+const ScrollContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+`
+
+const MessageContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+`
 
 const ErrorViewContainer = styled.div`
   margin: 6rem auto 0 auto;
@@ -81,11 +112,10 @@ const ShareChatContainer = styled.div`
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: calc(100dvh - 10rem);
+  flex: 1;
   padding: 1rem 2rem;
 
   @media (min-width: 30rem) {
-    min-height: 70vh;
     padding: 2rem;
   }
 `
@@ -186,7 +216,7 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
+  flex: 1;
   width: 100%;
 `
 
@@ -333,6 +363,12 @@ export default function ConversationView() {
     Map<string, { timeout: NodeJS.Timeout; timestamp: number }>
   >(new Map())
   const lastTypingEmit = useRef<number>(0)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const { height: viewportHeight, offsetTop: viewportOffsetTop } =
+    useViewportHeight()
+  const prevViewportHeight = useRef(viewportHeight)
+  const fullViewportHeight = useRef(window.innerHeight)
+  const isKeyboardVisible = viewportHeight < fullViewportHeight.current - 100
 
   const daysRemaining = deletionDate
     ? getDaysRemaining(new Date(), deletionDate)
@@ -346,6 +382,28 @@ export default function ConversationView() {
     })
     lastTypingEmit.current = 0
   }, [convoId])
+
+  // Lock body scroll to prevent iOS from shifting the viewport when keyboard opens
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+
+    html.style.overflow = 'hidden'
+    html.style.height = '100%'
+    body.style.overflow = 'hidden'
+    body.style.height = '100%'
+    body.style.position = 'fixed'
+    body.style.width = '100%'
+
+    return () => {
+      html.style.overflow = ''
+      html.style.height = ''
+      body.style.overflow = ''
+      body.style.height = ''
+      body.style.position = ''
+      body.style.width = ''
+    }
+  }, [])
 
   const handleNotificationToggle = () => {
     if (!('Notification' in window)) return
@@ -528,10 +586,20 @@ export default function ConversationView() {
     }
   }, [convoId, authUser, user, convoName])
 
-  // Scroll to bottom of page when new messages roll in.
+  // Scroll to bottom of message area when new messages arrive.
   useEffect(() => {
-    window.scrollTo(0, document.body.scrollHeight)
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+    }
   }, [messages])
+
+  // Scroll to bottom when keyboard opens (viewport shrinks) to keep latest messages visible.
+  useEffect(() => {
+    if (viewportHeight < prevViewportHeight.current && scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+    }
+    prevViewportHeight.current = viewportHeight
+  }, [viewportHeight])
 
   // Update messages when logged-in user's profile changes
   useEffect(() => {
@@ -743,7 +811,9 @@ export default function ConversationView() {
         },
         (response: any) => {
           if (!response.success) {
-            reject(new Error(response.error || 'Failed to rename conversation.'))
+            reject(
+              new Error(response.error || 'Failed to rename conversation.'),
+            )
             return
           }
 
@@ -800,51 +870,64 @@ export default function ConversationView() {
           onDismiss={() => setShowRenameDialog(false)}
         />
       )}
-      <div>
-        <NavBar
-          title={doesChatExist === undefined ? 'Loading...' : convoName}
-          subtitle={
-            doesChatExist
-              ? `${daysRemaining} ${
-                  daysRemaining === 1 ? 'day' : 'days'
-                } remaining`
-              : undefined
-          }
-          onUserClick={() => setShouldEditUser(true)}
-          userName={authUser?.displayName || user.name}
-          userAvatar={authUser?.profilePicURL || user.avatar}
-          isAnonymous={!authUser}
-          onNotificationToggle={
-            showNotificationButton ? handleNotificationToggle : undefined
-          }
-          onRenameClick={canRenameConversation ? () => setShowRenameDialog(true) : undefined}
-        />
-        {showLoadingIndicator ? (
-          <LoadingIndicator />
-        ) : messages.length === 0 && !isLoadingMessages ? (
-          <ShareChat />
-        ) : (
-          <MessageView
-            highlightId={authUser?.id || `${user.name}-${user.avatar}`}
-            isLoadingOlderMessages={isLoadingOlderMessages}
-            onLoadOlderMessages={handleLoadOlderMessages}
-            showLoadOlderMessagesButton={pageInfo?.hasMore ?? false}
-            messages={messages}
-            typingIndicator={typingIndicatorText}
-          />
-        )}
-        {!authUser && user.name.length === 0 ? (
-          <SetupProfileButton onClick={() => setShouldEditUser(true)} />
-        ) : (
-          <ComposeBox
-            becameActive={() => {}}
-            disableUpload={true}
-            onUploadFile={() => {}}
-            sendMessage={sendMessageHandler}
-            onTyping={handleTyping}
-          />
-        )}
-      </div>
+      <ConversationLayout
+        style={{ height: `${viewportHeight}px`, top: `${viewportOffsetTop}px` }}
+      >
+        <ScrollableArea ref={scrollAreaRef}>
+          <ScrollContent>
+            <NavBar
+              title={doesChatExist === undefined ? 'Loading...' : convoName}
+              subtitle={
+                doesChatExist
+                  ? `${daysRemaining} ${
+                      daysRemaining === 1 ? 'day' : 'days'
+                    } remaining`
+                  : undefined
+              }
+              onUserClick={() => setShouldEditUser(true)}
+              userName={authUser?.displayName || user.name}
+              userAvatar={authUser?.profilePicURL || user.avatar}
+              isAnonymous={!authUser}
+              onNotificationToggle={
+                showNotificationButton ? handleNotificationToggle : undefined
+              }
+              onRenameClick={
+                canRenameConversation
+                  ? () => setShowRenameDialog(true)
+                  : undefined
+              }
+            />
+            <MessageContent>
+              {showLoadingIndicator ? (
+                <LoadingIndicator />
+              ) : messages.length === 0 && !isLoadingMessages ? (
+                <ShareChat />
+              ) : (
+                <MessageView
+                  highlightId={authUser?.id || `${user.name}-${user.avatar}`}
+                  isLoadingOlderMessages={isLoadingOlderMessages}
+                  onLoadOlderMessages={handleLoadOlderMessages}
+                  showLoadOlderMessagesButton={pageInfo?.hasMore ?? false}
+                  messages={messages}
+                  typingIndicator={typingIndicatorText}
+                />
+              )}
+            </MessageContent>
+            {!authUser && user.name.length === 0 ? (
+              <SetupProfileButton onClick={() => setShouldEditUser(true)} />
+            ) : (
+              <ComposeBox
+                becameActive={() => {}}
+                disableUpload={true}
+                onUploadFile={() => {}}
+                sendMessage={sendMessageHandler}
+                onTyping={handleTyping}
+                keyboardVisible={isKeyboardVisible}
+              />
+            )}
+          </ScrollContent>
+        </ScrollableArea>
+      </ConversationLayout>
     </>
   )
 }

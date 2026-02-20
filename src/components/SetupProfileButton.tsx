@@ -2,11 +2,11 @@ import styled from 'styled-components'
 import { GlassmorphicContainer } from './shared/StyledComponents'
 
 const SetupProfileContainer = styled(GlassmorphicContainer)`
-  position: fixed;
+  position: sticky;
   bottom: 0;
-  left: 0;
-  right: 0;
   height: calc(76px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  z-index: 10;
 
   @media (min-width: 40rem) {
     height: 96px;

@@ -7,13 +7,13 @@ import FileUploadSVG from '../assets/file-upload.svg?react'
 import { GlassmorphicContainer } from './shared/StyledComponents'
 
 const Container = styled(GlassmorphicContainer)<{ $active?: boolean }>`
-  position: fixed;
+  position: sticky;
   bottom: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
+  z-index: 10;
 `
 
-const Content = styled.div<{ $uploadEnabled: boolean }>`
+const Content = styled.div<{ $uploadEnabled: boolean; $keyboardVisible: boolean }>`
   width: calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right));
   display: grid;
   grid-template-columns: ${(props) =>
@@ -21,7 +21,7 @@ const Content = styled.div<{ $uploadEnabled: boolean }>`
   column-gap: 10px;
   max-width: 40rem;
   margin: auto;
-  padding: 1rem 0 1.5rem 0;
+  padding: 1rem 0 ${(props) => props.$keyboardVisible ? '1rem' : 'calc(1.5rem + env(safe-area-inset-bottom, 0px))'} 0;
 `
 
 const UploadButtonContainer = styled.div`
@@ -151,6 +151,7 @@ type ComposeBox = {
   onUploadFile: () => void
   disableUpload: boolean
   onTyping?: () => void
+  keyboardVisible?: boolean
 }
 
 const ComposeBox = ({
@@ -159,6 +160,7 @@ const ComposeBox = ({
   onUploadFile,
   disableUpload,
   onTyping,
+  keyboardVisible = false,
 }: ComposeBox) => {
   const [message, setMessage] = useState<string>('')
   const [active, setActive] = useState<boolean>(false)
@@ -189,7 +191,7 @@ const ComposeBox = ({
 
   return (
     <Container $active={active}>
-      <Content $uploadEnabled={!disableUpload}>
+      <Content $uploadEnabled={!disableUpload} $keyboardVisible={keyboardVisible}>
         <div></div>
         <input
           type='file'
@@ -214,6 +216,7 @@ const ComposeBox = ({
             rows={1}
             placeholder='Message'
             value={message}
+            enterKeyHint='send'
             onChange={(event) => {
               setMessage(event.target.value)
               adjustTextareaHeight()
