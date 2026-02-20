@@ -31,6 +31,7 @@ import {
   LinkDisplayContainer,
   gradientTextStyle,
 } from '../components/shared/StyledComponents'
+import { subscribeToPush } from '../util/pushNotifications'
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'Web Messages'
 
@@ -413,6 +414,8 @@ export default function ConversationView() {
         new Notification('Notifications Enabled', {
           body: 'You will receive notifications for new messages!',
         })
+        // Register push subscription with the server
+        subscribeToPush()
       }
       // Hide button after user makes a decision (granted or denied)
       setShowNotificationButton(false)

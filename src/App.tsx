@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import { store } from './store/store'
 import { initializeAuth } from './store/slices/auth'
 import UserContext, { UserType } from './util/userContext'
+import { registerServiceWorker, subscribeToPush } from './util/pushNotifications'
 import ConversationView from './pages/Conversation'
 import NewConversation from './pages/NewConversation'
 import Landing from './pages/Landing'
@@ -44,6 +45,24 @@ function App() {
     }
     didInitAuthRef.current = true
     store.dispatch(initializeAuth())
+  }, [])
+
+  // Register service worker on mount and subscribe to push when user logs in
+  useEffect(() => {
+    registerServiceWorker()
+
+    let wasAuthenticated = false
+    const unsubscribe = store.subscribe(() => {
+      const { accessToken } = store.getState().auth
+      const isAuthenticated = !!accessToken
+
+      if (isAuthenticated && !wasAuthenticated) {
+        subscribeToPush()
+      }
+      wasAuthenticated = isAuthenticated
+    })
+
+    return unsubscribe
   }, [])
 
   // Retrieve user info for users without an account.
