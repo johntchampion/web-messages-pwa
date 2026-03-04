@@ -9,8 +9,8 @@ const TextBubble = styled.div<{ $highlighted?: boolean; $delivered?: boolean }>`
     props.$highlighted
       ? `linear-gradient(135deg, var(--accent-color) 0%, #5a5479 100%)`
       : props.$delivered
-      ? 'var(--content-background)'
-      : 'gray'};
+        ? 'var(--content-background)'
+        : 'gray'};
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border-radius: 20px;
   padding: 10px 14px;
@@ -25,8 +25,8 @@ const TextBubble = styled.div<{ $highlighted?: boolean; $delivered?: boolean }>`
       props.$highlighted
         ? `linear-gradient(135deg, #78729f 0%, #5a5479 100%)`
         : props.$delivered
-        ? 'var(--content-background)'
-        : 'gray'};
+          ? 'var(--content-background)'
+          : 'gray'};
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     color: #dcd8d3;
   }
@@ -42,6 +42,11 @@ const Block = styled.div`
   flex-direction: row;
   justify-content: flex-start;
   margin: 16px 8px;
+  padding-bottom: 0;
+
+  &:last-child {
+    margin-bottom: 36px;
+  }
 `
 
 const BlockSenderImage = styled.div`
@@ -111,7 +116,7 @@ const View = styled.div<{ $margin?: string }>`
   width: 100%;
   margin: ${(props) => props.$margin || '0 auto'};
   max-width: 40rem;
-  padding: 8px 0;
+  padding: 0;
 `
 
 const ViewLoadMessagesButtonContainer = styled.div`
@@ -121,9 +126,11 @@ const ViewLoadMessagesButtonContainer = styled.div`
 
 const TypingIndicatorText = styled.div`
   font-size: 13px;
+  line-height: 16px;
   font-style: italic;
   color: #999;
   padding: 4px 16px 8px 16px;
+  margin-top: -8px;
 
   @media (prefers-color-scheme: dark) {
     color: #777;
@@ -301,7 +308,7 @@ const MessageView = ({
       Math.abs(
         messageBlocks[messageBlocks.length - 1].messages[
           messageBlocks[messageBlocks.length - 1].messages.length - 1
-        ].timestamp.valueOf() - message.timestamp.valueOf()
+        ].timestamp.valueOf() - message.timestamp.valueOf(),
       ) < 60000
     ) {
       messageBlocks[messageBlocks.length - 1].messages.push({ ...message })
@@ -338,7 +345,7 @@ const MessageView = ({
           index === 0 || (previousDate && !isSameDay(currentDate, previousDate))
 
         return (
-          <div key={JSON.stringify(block.messages)}>
+          <>
             {showDateSeparator && (
               <DateSeparator>{formatDateSeparator(currentDate)}</DateSeparator>
             )}
@@ -349,7 +356,7 @@ const MessageView = ({
               messages={block.messages}
               highlighted={block.senderId === highlightId}
             />
-          </div>
+          </>
         )
       })}
       {typingIndicator && (
