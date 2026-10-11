@@ -1,7 +1,7 @@
 /// <reference types="vite-plugin-svgr/client" />
 
 import { useNavigate } from 'react-router-dom'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 import CloseSVG from '../assets/close.svg?react'
 import BellSVG from '../assets/bell.svg?react'
@@ -109,13 +109,22 @@ const BellOffIcon = styled(BellOffSVG)`
   }
 `
 
+const hiddenOnMobile = css`
+  @media not all and (min-width: 40rem) {
+    display: none;
+  }
+`
+
 const ProfileChip = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
+  flex-shrink: 0;
+  width: 40px;
   height: 40px;
-  padding: 4px 12px;
-  border-radius: 20px;
+  padding: 0;
+  border-radius: 50%;
   background: white;
   border: none;
   cursor: pointer;
@@ -142,6 +151,12 @@ const ProfileChip = styled.button`
 
   &:active {
     transform: translateY(0);
+  }
+
+  @media (min-width: 40rem) {
+    width: auto;
+    padding: 4px 12px;
+    border-radius: 20px;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -176,10 +191,7 @@ const ProfileName = styled.span`
   white-space: nowrap;
   color: #333;
   transition: color 0.2s ease;
-
-  @media (max-width: 400px) {
-    max-width: 60px;
-  }
+  ${hiddenOnMobile}
 
   @media (prefers-color-scheme: dark) {
     color: #e5e5e5;
@@ -192,6 +204,7 @@ const ChevronIcon = styled.span`
   display: flex;
   align-items: center;
   transition: opacity 0.2s ease;
+  ${hiddenOnMobile}
 `
 
 const IdentityBadge = styled.span`
@@ -207,6 +220,7 @@ const IdentityBadge = styled.span`
   font-weight: 700;
   white-space: nowrap;
   transition: all 0.2s ease;
+  ${hiddenOnMobile}
 
   @media (prefers-color-scheme: dark) {
     background: linear-gradient(
