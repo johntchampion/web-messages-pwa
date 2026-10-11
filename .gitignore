@@ -73,6 +73,7 @@ Desktop.ini
 # PWA
 workbox-*.js
 sw.js
+!public/sw.js
 service-worker.js
 precache-manifest.*.js
 
