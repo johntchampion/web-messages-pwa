@@ -48,13 +48,14 @@ This frontend application provides a complete messaging experience with:
 
 Create a `.env` file in the root directory with these variables:
 
-| Variable              | Description                  | Default               | Required |
-| --------------------- | ---------------------------- | --------------------- | -------- |
-| VITE_API_BASE_URL     | Backend API base URL         | http://localhost:8000 | Yes      |
-| VITE_SOCKET_BASE_URL  | Socket.IO connection URL     | http://localhost:8000 | Yes      |
-| VITE_APP_NAME         | Application display name     | Web Messages          | No       |
+| Variable      | Description                                  | Default               | Required |
+| ------------- | -------------------------------------------- | --------------------- | -------- |
+| BACKEND_URL   | Backend service the dev/preview server proxies to | http://localhost:8000 | No       |
+| VITE_APP_NAME | Application display name                     | Web Messages          | No       |
 
-**Note**: Vite requires environment variables to be prefixed with `VITE_` to be exposed to the client.
+The client always talks to its own origin. The Vite dev and preview servers proxy `/auth`, `/push`, and `/socket.io` (including WebSockets) to `BACKEND_URL` (see `vite.config.ts`), so REST and Socket.IO share one URL and the backend needs no CORS. A production deployment behind a reverse proxy should route those same paths to the backend service.
+
+**Note**: Only variables prefixed with `VITE_` are exposed to the client. `BACKEND_URL` is read by the Vite server at startup, not embedded in the bundle.
 
 ## Installation
 
@@ -110,8 +111,7 @@ Run the development container:
 
 ```bash
 docker run -p 3000:3000 \
-    -e VITE_API_BASE_URL=http://localhost:8000 \
-    -e VITE_SOCKET_BASE_URL=http://localhost:8000 \
+    -e BACKEND_URL=http://host.docker.internal:8000 \
     -e VITE_APP_NAME="Web Messages" \
     messages-pwa-dev
 ```
@@ -128,8 +128,7 @@ Run the production container:
 
 ```bash
 docker run -p 3000:3000 \
-    -e VITE_API_BASE_URL=http://localhost:8000 \
-    -e VITE_SOCKET_BASE_URL=http://localhost:8000 \
+    -e BACKEND_URL=http://host.docker.internal:8000 \
     -e VITE_APP_NAME="Web Messages" \
     messages-pwa
 ```
@@ -203,8 +202,7 @@ Use `.env.local` for local development overrides:
 
 ```bash
 # .env.local
-VITE_API_BASE_URL=http://localhost:8001
-VITE_SOCKET_BASE_URL=http://localhost:8001
+BACKEND_URL=http://localhost:8001
 VITE_APP_NAME="My Chat App"
 ```
 
@@ -277,10 +275,10 @@ server {
 
 If the app can't connect to the backend:
 
-1. Verify `VITE_API_BASE_URL` is correct:
+1. Verify `BACKEND_URL` points at the backend (restart the dev server after changing it):
 
    ```bash
-   echo $VITE_API_BASE_URL
+   echo $BACKEND_URL
    ```
 
 2. Check backend is running:
@@ -289,7 +287,7 @@ If the app can't connect to the backend:
    curl http://localhost:8000/health-check
    ```
 
-3. Verify CORS is configured on backend to allow frontend origin
+3. Verify the request path is one the Vite proxy forwards (`/auth`, `/push`, `/socket.io`)
 
 ### Socket.IO Connection Issues
 
@@ -347,8 +345,8 @@ Remember:
 
 - Vite variables must start with `VITE_`
 - Restart dev server after changing `.env`
-- Environment variables are embedded at build time
-- Use `import.meta.env.VITE_API_BASE_URL` in code
+- `VITE_` variables are embedded at build time
+- Use `import.meta.env.VITE_APP_NAME` in code
 
 ## PWA Configuration
 

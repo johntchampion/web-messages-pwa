@@ -27,13 +27,9 @@ type FailedRequest = {
   config: AxiosRequestConfig & { _retry?: boolean }
 }
 
-const restAPI = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-})
+const restAPI = axios.create()
 
-const refreshClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-})
+const refreshClient = axios.create()
 
 let store: StoreLike | null = null
 let isRefreshing = false

@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv, Plugin } from 'vite'
+import { defineConfig, loadEnv, Plugin, ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import svgr from 'vite-plugin-svgr'
 import fs from 'fs'
@@ -46,20 +46,32 @@ function manifestPlugin(appName: string): Plugin {
   }
 }
 
+// The client always talks same-origin; these paths are forwarded to the backend service.
+function backendProxyRoutes(backendUrl: string): Record<string, ProxyOptions> {
+  return {
+    '/auth': { target: backendUrl, changeOrigin: true },
+    '/push': { target: backendUrl, changeOrigin: true },
+    '/socket.io': { target: backendUrl, changeOrigin: true, ws: true },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const appName = env.VITE_APP_NAME || 'Web Messages'
+  const backendProxy = backendProxyRoutes(env.BACKEND_URL || 'http://localhost:8000')
 
   return {
     plugins: [react(), svgr(), manifestPlugin(appName)],
     server: {
       port: Number(env.PORT) || 5173,
       host: true,
+      proxy: backendProxy,
     },
     preview: {
       port: Number(env.PORT) || 3000,
       host: true,
+      proxy: backendProxy,
     },
   }
 })
