@@ -228,8 +228,9 @@ export default function About() {
               instantly with live updates
             </FeatureItem>
             <FeatureItem>
-              <Strong>Desktop Notifications</Strong> - Get notified when new
-              messages arrive, even when the tab is in the background
+              <Strong>Push Notifications</Strong> - Get notified when new
+              messages arrive, even when the app is closed. Tap a notification
+              to jump straight to its conversation
             </FeatureItem>
           </FeatureList>
         </Section>

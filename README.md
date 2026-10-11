@@ -169,7 +169,7 @@ PWA features include:
 - Install prompt for standalone app experience
 - Offline message viewing (if service worker configured)
 - App-like navigation and UI
-- Push notifications (if implemented)
+- Push notifications via the Web Push API (`public/sw.js`). The bell in a conversation turns notifications on or off for that conversation on this device; tapping a notification opens its conversation. Requires the service's `VAPID_*` variables and HTTPS (or `localhost`). On iOS, the app must be added to the Home Screen first
 
 ## API Integration
 

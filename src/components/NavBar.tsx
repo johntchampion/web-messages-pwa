@@ -5,6 +5,7 @@ import styled from 'styled-components'
 
 import CloseSVG from '../assets/close.svg?react'
 import BellSVG from '../assets/bell.svg?react'
+import BellOffSVG from '../assets/bell-off.svg?react'
 import ICON_MAP from '../util/profileIcons'
 import {
   GlassmorphicContainer,
@@ -89,6 +90,16 @@ const CloseIcon = styled(CloseSVG)`
 `
 
 const BellIcon = styled(BellSVG)`
+  path {
+    fill: var(--accent-color);
+
+    @media (prefers-color-scheme: dark) {
+      fill: white;
+    }
+  }
+`
+
+const BellOffIcon = styled(BellOffSVG)`
   path {
     fill: var(--accent-color);
 
@@ -257,6 +268,7 @@ type NavBar = {
   userName?: string
   userAvatar?: string
   isAnonymous?: boolean
+  notificationsEnabled?: boolean
   onNotificationToggle?: () => void
   onRenameClick?: () => void
 }
@@ -268,6 +280,7 @@ const NavBar = ({
   userName,
   userAvatar,
   isAnonymous = false,
+  notificationsEnabled = false,
   onNotificationToggle,
   onRenameClick,
 }: NavBar) => {
@@ -306,9 +319,14 @@ const NavBar = ({
           {onNotificationToggle && (
             <NavBarButton
               onClick={onNotificationToggle}
-              title='Toggle Notifications'
+              title={
+                notificationsEnabled
+                  ? 'Turn Off Notifications'
+                  : 'Turn On Notifications'
+              }
+              aria-pressed={notificationsEnabled}
             >
-              <BellIcon />
+              {notificationsEnabled ? <BellIcon /> : <BellOffIcon />}
             </NavBarButton>
           )}
           <NavBarButton onClick={() => navigate('/')} title='Go to Home'>

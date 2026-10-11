@@ -14,7 +14,6 @@ import { MessageType, PageInfo, SocketResponse } from '../types'
 import getDaysRemaining from '../util/daysRemaining'
 import socket from '../util/socket'
 import UserContext from '../util/userContext'
-import ICON_MAP from '../util/profileIcons'
 import MessageView from '../components/MessageView'
 import NavBar from '../components/NavBar'
 import ComposeBox from '../components/ComposeBox'
@@ -22,6 +21,8 @@ import EditProfile from '../components/EditProfile'
 import SetupProfileButton from '../components/SetupProfileButton'
 import EditConversationDialog from '../components/EditConversationDialog'
 import useViewportHeight from '../hooks/useViewportHeight'
+import useConversationNotifications from '../hooks/useConversationNotifications'
+import useReportViewingConversation from '../hooks/useReportViewingConversation'
 import type { RootState } from '../store/store'
 import {
   Card,
@@ -258,12 +259,6 @@ const LoadingText = styled.div`
   }
 `
 
-const sendNotification = (title: string, options?: NotificationOptions) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, options)
-  }
-}
-
 function ErrorView({
   title,
   message,
@@ -363,9 +358,6 @@ export default function ConversationView() {
   const [doesChatExist, setDoesChatExist] = useState<boolean>()
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false)
-  const [showNotificationButton, setShowNotificationButton] = useState(
-    'Notification' in window && Notification.permission === 'default',
-  )
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [typingUsers, setTypingUsers] = useState<
     Map<string, { timeout: NodeJS.Timeout; timestamp: number }>
@@ -377,6 +369,12 @@ export default function ConversationView() {
   const prevViewportHeight = useRef(viewportHeight)
   const fullViewportHeight = useRef(window.innerHeight)
   const isKeyboardVisible = viewportHeight < fullViewportHeight.current - 100
+  const notifications = useConversationNotifications(convoId, authUser?.id)
+  useReportViewingConversation(
+    convoId,
+    notifications.subscriptionId,
+    isSocketConnected,
+  )
 
   const daysRemaining = deletionDate
     ? getDaysRemaining(new Date(), deletionDate)
@@ -413,20 +411,6 @@ export default function ConversationView() {
     }
   }, [])
 
-  const handleNotificationToggle = () => {
-    if (!('Notification' in window)) return
-
-    Notification.requestPermission().then((permission) => {
-      if (permission === 'granted') {
-        new Notification('Notifications Enabled', {
-          body: 'You will receive notifications for new messages!',
-        })
-      }
-      // Hide button after user makes a decision (granted or denied)
-      setShowNotificationButton(false)
-    })
-  }
-
   const handleTyping = useCallback(() => {
     const now = Date.now()
     if (now - lastTypingEmit.current < 2000) return
@@ -458,23 +442,6 @@ export default function ConversationView() {
       const messageSenderId =
         newMessage['senderId'] ||
         `${newMessage['senderName']}-${newMessage['senderAvatar']}`
-      const currentUserId = authUser?.id || `${user.name}-${user.avatar}`
-
-      // Show notification if message is from another user and page is in background or not focused
-      const shouldNotify =
-        messageSenderId !== currentUserId &&
-        (!document.hasFocus() || document.hidden)
-
-      if (shouldNotify) {
-        const avatarIcon = newMessage['senderAvatar']
-          ? ICON_MAP[newMessage['senderAvatar']] || newMessage['senderAvatar']
-          : undefined
-
-        sendNotification(`${newMessage['senderName']} in ${convoName}`, {
-          body: newMessage['content'],
-          icon: avatarIcon,
-        })
-      }
 
       // Clear typing indicator for the sender since their message arrived
       const senderName = newMessage['senderName']
@@ -593,7 +560,7 @@ export default function ConversationView() {
       socket.off('conversation-deleted', onConversationDeleted)
       socket.off('user-typing', onUserTyping)
     }
-  }, [convoId, authUser, user, convoName])
+  }, [convoId])
 
   // Scroll to bottom of message area when new messages arrive.
   useEffect(() => {
@@ -756,6 +723,7 @@ export default function ConversationView() {
         userAvatar: senderAvatar,
         token: accessToken, // Server should automatically use logged-in user if token is provided
         aiResponse: messageContent.toLocaleLowerCase().startsWith('@ai'),
+        pushSubscriptionId: notifications.subscriptionId,
       },
       (response: SocketResponse) => {
         if (!response.success) {
@@ -899,8 +867,11 @@ export default function ConversationView() {
             userName={authUser?.displayName || user.name}
             userAvatar={authUser?.profilePicURL || user.avatar}
             isAnonymous={!authUser}
+            notificationsEnabled={notifications.status === 'on'}
             onNotificationToggle={
-              showNotificationButton ? handleNotificationToggle : undefined
+              doesChatExist && notifications.status !== 'unavailable'
+                ? notifications.toggle
+                : undefined
             }
             onRenameClick={
               canRenameConversation

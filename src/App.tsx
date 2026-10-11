@@ -10,6 +10,8 @@ import NewConversation from './pages/NewConversation'
 import Landing from './pages/Landing'
 import About from './pages/About'
 import ResetPassword from './pages/ResetPassword'
+import PushSubscriptionSync from './components/PushSubscriptionSync'
+import useServiceWorkerNavigation from './hooks/useServiceWorkerNavigation'
 
 const router = createBrowserRouter([
   {
@@ -34,9 +36,15 @@ const router = createBrowserRouter([
   },
 ])
 
+const navigateTo = (url: string) => {
+  router.navigate(url)
+}
+
 function App() {
   const [user, setUser] = useState<UserType>({ name: '', avatar: '' })
   const didInitAuthRef = useRef(false)
+
+  useServiceWorkerNavigation(navigateTo)
 
   useEffect(() => {
     if (didInitAuthRef.current) {
@@ -63,6 +71,7 @@ function App() {
 
   return (
     <Provider store={store}>
+      <PushSubscriptionSync />
       <UserContext.Provider value={[user, setUser]}>
         <RouterProvider router={router} />
       </UserContext.Provider>
