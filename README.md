@@ -101,20 +101,7 @@ This serves the built files from `dist/` directory.
 
 ### Development with Docker
 
-Build the development Docker image:
-
-```bash
-docker build -f Dockerfile.dev -t messages-pwa-dev .
-```
-
-Run the development container:
-
-```bash
-docker run -p 3000:3000 \
-    -e BACKEND_URL=http://host.docker.internal:8000 \
-    -e VITE_APP_NAME="Web Messages" \
-    messages-pwa-dev
-```
+To run this app and the service together with hot reload, use the Docker Compose setup in [web-messages](https://github.com/appdevjohn/web-messages).
 
 ### Production with Docker
 
